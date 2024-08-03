@@ -18,7 +18,8 @@ externalDocs:
 paths:
   /user/{sessionId}/permission:
     post:
-      tags: [Users]
+      operationId: post_user_permission
+      tags: [ Users ]
       summary: Applies permissions or restrictions to a user.
       description: >
         Applies or removes a user's permissions to one or more rooms.
@@ -36,7 +37,7 @@ paths:
         Note that the given session ID does not have to exist: it is possible to grant permissions
         preemptively for a session ID that has never visited the server or room(s).
       parameters:
-      - $ref: "#/components/parameters/pathSessionId"
+        - $ref: "#/components/parameters/pathSessionId"
       requestBody:
         description: "Details of the permission update to apply."
         required: true
@@ -44,7 +45,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [rooms]
+              required: [ rooms ]
               properties:
                 rooms:
                   type: array
@@ -117,34 +118,35 @@ paths:
               tworooms:
                 summary: "1-day mute in two rooms"
                 value:
-                  rooms: ["session", "lokinet"]
+                  rooms: [ "session", "lokinet" ]
                   timeout: 86400
                   write: false
               allow-uploads:
                 summary: "Allow file attachments for 1 week"
                 value:
-                  rooms: ["session-help"]
+                  rooms: [ "session-help" ]
                   upload: true
                   timeout: 604800
               secretroom:
                 summary: "Grant access to a restricted room"
                 value:
-                  rooms: ["top-secret"]
+                  rooms: [ "top-secret" ]
                   read: true
                   write: true
                   upload: true
       responses:
         200:
           description: Permission update applied successfully.
-          content: {}
+          content: { }
         403:
           description: >
             Permission denied.  The user attempting to set the permissions does not have moderator
             permissions for one or more of the given rooms.
-          content: {}
+          content: { }
   /user/{sessionId}/deleteMessages:
     post:
-      tags: [Users]
+      operationId: post_user_deleteMessages
+      tags: [ Users ]
       summary: Deletes all of a user's messages.
       description: >
         Deletes all messages posted by the given user from one or more rooms, or from all rooms on
@@ -154,7 +156,7 @@ paths:
         The caller must have moderator permission in all given rooms, or be a server moderator for
         global server deletion.
       parameters:
-      - $ref: "#/components/parameters/pathSessionId"
+        - $ref: "#/components/parameters/pathSessionId"
       requestBody:
         description: "Details of the deletion."
         required: true
@@ -188,7 +190,7 @@ paths:
               tworooms:
                 summary: "Delete all messages from two rooms"
                 value:
-                  rooms: ["session", "lokinet"]
+                  rooms: [ "session", "lokinet" ]
               permaban:
                 summary: "Delete all messages from all rooms"
                 value:
@@ -212,10 +214,11 @@ paths:
             Permission denied.  The user attempting to set the ban does not have moderator
             permissions for one or more of the given rooms (or server moderator permission for a
             global ban).
-          content: {}
+          content: { }
   /batch:
     post:
-      tags: [Batch]
+      operationId: post_batch
+      tags: [ Batch ]
       summary: "Utility endpoint to allow submitting multiple independent requests at once."
       description: >
         This is used, for example, to poll multiple rooms on the same server for updates in a single
@@ -227,71 +230,15 @@ paths:
         For contained subrequests that specify a body (i.e. POST or PUT requests) exactly one of
         `json`, `b64`, or `bytes` must be provided with the request body.
       requestBody:
-        description: "List of sub-requests to issue for this batch request."
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: object
-                required: [method, path]
-                properties:
-                  method:
-                    type: string
-                    description: "The request method, typically GET for batched requests, though other methods are also permitted."
-                  path:
-                    type: string
-                    description: "The request path, e.g. `/room/123/messages/since/45678`"
-                  headers:
-                    type: object
-                    description: "Dict of HTTP headers for the subrequest.  Optional."
-                  json:
-                    description: "Nested json structure containing a json body for a POST/PUT request.  Exclusive of `b64` and `bytes`."
-                    oneOf:
-                    - type: object
-                    - type: array
-                  b64:
-                    description: "Byte data for the body for a POST/PUT request.  Exclusive of `json` and `bytes`"
-                    type: string
-                    format: byte
-                  bytes:
-                    description: "Optional binary body, as raw octets.  Exclusive of `b64` and `json`.  Not recommended when using json unless the data happens to be mostly safe ascii"
-                    type: string
-                    format: binary
+        $ref: "#/components/requestBodies/BatchRequestBody"
       responses:
         200:
-          description: "Batch jobs completed. Note that 200 only means the batch was processed; for individual sub-requests see the relevant sub-response code.  The returned array returns responses in exactly the same order as the request's list of sub-requests (regardless of the actual order jobs were processed)."
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  required: [code, content-type, body]
-                  properties:
-                    code:
-                      type: integer
-                      format: int32
-                      description: "HTTP response code for the subrequest (e.g. 200, 404, etc.)"
-                    content-type:
-                      type: string
-                      description: "HTTP content-type of the subrequest response (e.g. `application/json`)"
-                    body:
-                      oneOf:
-                        - type: object
-                        - type: array
-                        - type: string
-                          format: byte
-                      description: >
-                        The response body.  For responses with `content-type` set to
-                        `application/json` this will be the direct object or array response; for any
-                        other content otherwise this will be a string containing the base64-encoded
-                        response data.
+          $ref: "#/components/responses/BatchSuccessResponse"
 
   /sequence:
     post:
-      tags: [Batch]
+      operationId: post_sequence
+      tags: [ Batch ]
       summary: "Utility endpoint to submit a batch of sequenced, dependent requests."
       description: >
         The requests are guaranteed to be performed sequentially in the order given in the request
@@ -303,14 +250,15 @@ paths:
         endpoint; requests that are not carried out because of an earlier failure will have a
         response code of `412` (Precondition Failed)."
       requestBody:
-        $ref: "#/paths/~1batch/post/requestBody"
+        $ref: "#/components/requestBodies/BatchRequestBody"
       responses:
         200:
-          $ref: "#/paths/~1batch/post/responses/200"
+          $ref: "#/components/responses/BatchSuccessResponse"
 
   /oxen/v4/lsrpc:
     post:
-      tags: [Onion]
+      operationId: post_oxen_v4_lsrpc
+      tags: [ Onion ]
       summary: "Endpoint for submitting an encrypted onion request"
       description: >
         The data is an onion-encrypted request for another endpoint, wrapped in an encrypted layer
@@ -594,4 +542,69 @@ components:
         HBODY is an empty string (i.e. omitted from the signature) if the request has no body, or
         has an empty body.  Otherwise it must be a 64-byte BLAKE2b hash of the request body.
 
+
+  requestBodies:
+    BatchRequestBody:
+      description: "List of sub-requests to issue for this batch request."
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              required: [ method, path ]
+              properties:
+                method:
+                  type: string
+                  description: "The request method, typically GET for batched requests, though other methods are also permitted."
+                path:
+                  type: string
+                  description: "The request path, e.g. `/room/123/messages/since/45678`"
+                headers:
+                  type: object
+                  description: "Dict of HTTP headers for the subrequest.  Optional."
+                json:
+                  description: "Nested json structure containing a json body for a POST/PUT request.  Exclusive of `b64` and `bytes`."
+                  oneOf:
+                    - type: object
+                    - type: array
+                b64:
+                  description: "Byte data for the body for a POST/PUT request.  Exclusive of `json` and `bytes`"
+                  type: string
+                  format: byte
+                bytes:
+                  description: "Optional binary body, as raw octets.  Exclusive of `b64` and `json`.  Not recommended when using json unless the data happens to be mostly safe ascii"
+                  type: string
+                  format: binary
+
+  responses:
+    BatchSuccessResponse:
+      description: "Batch jobs completed. Note that 200 only means the batch was processed; for individual sub-requests see the relevant sub-response code.  The returned array returns responses in exactly the same order as the request's list of sub-requests (regardless of the actual order jobs were processed)."
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              required: [ code, content-type, body ]
+              properties:
+                code:
+                  type: integer
+                  format: int32
+                  description: "HTTP response code for the subrequest (e.g. 200, 404, etc.)"
+                content-type:
+                  type: string
+                  description: "HTTP content-type of the subrequest response (e.g. `application/json`)"
+                body:
+                  oneOf:
+                    - type: object
+                    - type: array
+                    - type: string
+                      format: byte
+                  description: >
+                    The response body.  For responses with `content-type` set to
+                    `application/json` this will be the direct object or array response; for any
+                    other content otherwise this will be a string containing the base64-encoded
+                    response data.
 # vim:sw=2:et:tw=100
